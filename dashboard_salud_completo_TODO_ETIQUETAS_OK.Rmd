@@ -1,0 +1,445 @@
+---
+title: "Dashboard de Datos de Salud"
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: scroll
+    theme: flatly
+runtime: shiny
+---
+
+```{r global, include=FALSE}
+library(flexdashboard)
+library(shiny)
+library(dplyr)
+library(ggplot2)
+library(DT)
+
+df <- read.csv("healthcare-dataset-stroke-data.csv", stringsAsFactors = FALSE)
+df$age <- as.numeric(df$age)
+df$avg_glucose_level <- as.numeric(df$avg_glucose_level)
+df$bmi <- as.numeric(df$bmi)
+df$bmi[is.na(df$bmi)] <- mean(df$bmi, na.rm = TRUE)
+
+df$gender <- as.factor(df$gender)
+df$ever_married <- as.factor(df$ever_married)
+df$work_type <- as.factor(df$work_type)
+df$Residence_type <- as.factor(df$Residence_type)
+df$smoking_status <- as.factor(df$smoking_status)
+df$stroke <- factor(df$stroke, levels = c(0,1), labels = c("No", "Sí"))
+df$hypertension <- factor(df$hypertension, levels = c(0,1), labels = c("No", "Sí"))
+df$heart_disease <- factor(df$heart_disease, levels = c(0,1), labels = c("No", "Sí"))
+```
+
+Filtros y Datos
+============================
+
+Column {.sidebar}
+-------------------------------------
+
+### Filtros Cualitativos
+```{r}
+selectInput("gender", "Género:", choices = c("Todos", levels(df$gender)), selected = "Todos")
+selectInput("stroke", "Stroke:", choices = c("Todos", levels(df$stroke)), selected = "Todos")
+selectInput("work", "Tipo de Trabajo:", choices = c("Todos", levels(df$work_type)), selected = "Todos")
+selectInput("smoke", "Estado de Tabaquismo:", choices = c("Todos", levels(df$smoking_status)), selected = "Todos")
+```
+
+### Filtros Cuantitativos
+```{r}
+sliderInput("age", "Edad:", min = floor(min(df$age, na.rm=TRUE)), max = ceiling(max(df$age, na.rm=TRUE)), value = c(0, 100))
+sliderInput("glucose", "Nivel de Glucosa:", min = floor(min(df$avg_glucose_level, na.rm=TRUE)), max = ceiling(max(df$avg_glucose_level, na.rm=TRUE)), value = c(50, 300))
+sliderInput("bmi", "IMC:", min = floor(min(df$bmi, na.rm=TRUE)), max = ceiling(max(df$bmi, na.rm=TRUE)), value = c(10, 60))
+```
+
+Column
+-------------------------------------
+
+### Tabla de Datos Filtrados
+```{r}
+renderDataTable({
+  datos <- df %>%
+    filter((gender == input$gender | input$gender == "Todos"),
+           (stroke == input$stroke | input$stroke == "Todos"),
+           (work_type == input$work | input$work == "Todos"),
+           (smoking_status == input$smoke | input$smoke == "Todos"),
+           age >= input$age[1], age <= input$age[2],
+           avg_glucose_level >= input$glucose[1], avg_glucose_level <= input$glucose[2],
+           bmi >= input$bmi[1], bmi <= input$bmi[2])
+
+  datatable(datos, options = list(scrollX = TRUE, pageLength = 10), class = "compact")
+})
+```
+
+Row
+-------------------------------------
+
+### Métricas de Edad
+```{r}
+renderTable({
+  datos <- df %>%
+    filter((gender == input$gender | input$gender == "Todos"),
+           (stroke == input$stroke | input$stroke == "Todos"),
+           (work_type == input$work | input$work == "Todos"),
+           (smoking_status == input$smoke | input$smoke == "Todos"),
+           age >= input$age[1], age <= input$age[2],
+           avg_glucose_level >= input$glucose[1], avg_glucose_level <= input$glucose[2],
+           bmi >= input$bmi[1], bmi <= input$bmi[2])
+
+  data.frame(
+    Métrica = c("Media", "Mediana", "Desv.Std", "Mínimo", "1er Cuartil", "3er Cuartil", "Máximo"),
+    Edad = round(c(
+      mean(datos$age), median(datos$age), sd(datos$age),
+      min(datos$age), quantile(datos$age, 0.25),
+      quantile(datos$age, 0.75), max(datos$age)
+    ), 2)
+  )
+})
+```
+
+### Métricas de Glucosa
+```{r}
+renderTable({
+  datos <- df %>%
+    filter((gender == input$gender | input$gender == "Todos"),
+           (stroke == input$stroke | input$stroke == "Todos"),
+           (work_type == input$work | input$work == "Todos"),
+           (smoking_status == input$smoke | input$smoke == "Todos"),
+           age >= input$age[1], age <= input$age[2],
+           avg_glucose_level >= input$glucose[1], avg_glucose_level <= input$glucose[2],
+           bmi >= input$bmi[1], bmi <= input$bmi[2])
+
+  data.frame(
+    Métrica = c("Media", "Mediana", "Desv.Std", "Mínimo", "1er Cuartil", "3er Cuartil", "Máximo"),
+    Glucosa = round(c(
+      mean(datos$avg_glucose_level), median(datos$avg_glucose_level), sd(datos$avg_glucose_level),
+      min(datos$avg_glucose_level), quantile(datos$avg_glucose_level, 0.25),
+      quantile(datos$avg_glucose_level, 0.75), max(datos$avg_glucose_level)
+    ), 2)
+  )
+})
+```
+
+### Métricas de IMC
+```{r}
+renderTable({
+  datos <- df %>%
+    filter((gender == input$gender | input$gender == "Todos"),
+           (stroke == input$stroke | input$stroke == "Todos"),
+           (work_type == input$work | input$work == "Todos"),
+           (smoking_status == input$smoke | input$smoke == "Todos"),
+           age >= input$age[1], age <= input$age[2],
+           avg_glucose_level >= input$glucose[1], avg_glucose_level <= input$glucose[2],
+           bmi >= input$bmi[1], bmi <= input$bmi[2])
+
+  data.frame(
+    Métrica = c("Media", "Mediana", "Desv.Std", "Mínimo", "1er Cuartil", "3er Cuartil", "Máximo"),
+    IMC = round(c(
+      mean(datos$bmi), median(datos$bmi), sd(datos$bmi),
+      min(datos$bmi), quantile(datos$bmi, 0.25),
+      quantile(datos$bmi, 0.75), max(datos$bmi)
+    ), 2)
+  )
+})
+```
+
+Row
+-------------------------------------
+
+### Histogramas con ggplot2
+```{r}
+renderPlot({
+  datos <- df %>%
+    filter((gender == input$gender | input$gender == "Todos"),
+           (stroke == input$stroke | input$stroke == "Todos"),
+           (work_type == input$work | input$work == "Todos"),
+           (smoking_status == input$smoke | input$smoke == "Todos"),
+           age >= input$age[1], age <= input$age[2],
+           avg_glucose_level >= input$glucose[1], avg_glucose_level <= input$glucose[2],
+           bmi >= input$bmi[1], bmi <= input$bmi[2])
+
+  library(ggplot2)
+  library(gridExtra)
+
+  p1 <- ggplot(datos, aes(x = age)) +
+    geom_histogram(fill = "skyblue", bins = 20, color = "white") +
+    theme_minimal() + labs(title = "Histograma de Edad", x = "Edad", y = "Frecuencia")
+
+  p2 <- ggplot(datos, aes(x = avg_glucose_level)) +
+    geom_histogram(fill = "orange", bins = 20, color = "white") +
+    theme_minimal() + labs(title = "Histograma de Glucosa", x = "Nivel de Glucosa", y = "Frecuencia")
+
+  gridExtra::grid.arrange(p1, p2, ncol = 2)
+})
+```
+
+
+### Boxplot de Edad según Estado de Tabaquismo
+```{r}
+renderPlot({
+  datos <- df %>%
+    filter((gender == input$gender | input$gender == "Todos"),
+           (stroke == input$stroke | input$stroke == "Todos"),
+           (work_type == input$work | input$work == "Todos"),
+           (smoking_status == input$smoke | input$smoke == "Todos"),
+           age >= input$age[1], age <= input$age[2],
+           avg_glucose_level >= input$glucose[1], avg_glucose_level <= input$glucose[2],
+           bmi >= input$bmi[1], bmi <= input$bmi[2])
+
+  ggplot(datos, aes(x = smoking_status, y = age, fill = smoking_status)) +
+    geom_boxplot() +
+    theme_minimal() +
+    labs(title = "Boxplot de Edad por Estado de Tabaquismo", x = "Estado de Tabaquismo", y = "Edad") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    scale_fill_brewer(palette = "Set2")
+})
+```
+
+```{r}
+renderPlot({
+  datos <- df %>%
+    filter((gender == input$gender | input$gender == "Todos"),
+           (stroke == input$stroke | input$stroke == "Todos"),
+           (work_type == input$work | input$work == "Todos"),
+           (smoking_status == input$smoke | input$smoke == "Todos"),
+           age >= input$age[1], age <= input$age[2],
+           avg_glucose_level >= input$glucose[1], avg_glucose_level <= input$glucose[2],
+           bmi >= input$bmi[1], bmi <= input$bmi[2])
+
+  library(tidyr)
+  datos_long <- datos %>%
+    select(age, avg_glucose_level) %>%
+    pivot_longer(cols = everything(), names_to = "Variable", values_to = "Valor")
+
+  ggplot(datos_long, aes(x = Variable, y = Valor, fill = Variable)) +
+    geom_boxplot() +
+    theme_minimal() +
+    scale_fill_manual(values = c("age" = "lightblue", "avg_glucose_level" = "orange")) +
+    labs(title = "Boxplots de Edad y Glucosa", x = "", y = "Valor")
+})
+```
+
+
+Análisis de Regresión
+============================
+
+Column {.sidebar}
+-------------------------------------
+
+### Seleccione Variables Cuantitativas
+```{r}
+selectInput("var_x", "Variable Independiente (X):", 
+            choices = c("age", "avg_glucose_level", "bmi"), 
+            selected = "age")
+selectInput("var_y", "Variable Dependiente (Y):", 
+            choices = c("age", "avg_glucose_level", "bmi"), 
+            selected = "avg_glucose_level")
+```
+
+Column
+-------------------------------------
+
+### Regresión Lineal y Diagrama de Dispersión
+```{r}
+renderPlot({
+  datos <- df %>%
+    filter((gender == input$gender | input$gender == "Todos"),
+           (stroke == input$stroke | input$stroke == "Todos"),
+           (work_type == input$work | input$work == "Todos"),
+           (smoking_status == input$smoke | input$smoke == "Todos"),
+           age >= input$age[1], age <= input$age[2],
+           avg_glucose_level >= input$glucose[1], avg_glucose_level <= input$glucose[2],
+           bmi >= input$bmi[1], bmi <= input$bmi[2])
+
+  ggplot(datos, aes_string(x = input$var_x, y = input$var_y)) +
+    geom_point(alpha = 0.6, color = "steelblue") +
+    geom_smooth(method = "lm", se = TRUE, color = "darkred") +
+    theme_minimal() +
+    labs(
+      title = paste("Regresión Lineal:", input$var_y, "vs", input$var_x),
+      x = input$var_x,
+      y = input$var_y
+    )
+})
+```
+
+### Coeficientes del Modelo
+```{r}
+renderTable({
+  datos <- df %>%
+    filter((gender == input$gender | input$gender == "Todos"),
+           (stroke == input$stroke | input$stroke == "Todos"),
+           (work_type == input$work | input$work == "Todos"),
+           (smoking_status == input$smoke | input$smoke == "Todos"),
+           age >= input$age[1], age <= input$age[2],
+           avg_glucose_level >= input$glucose[1], avg_glucose_level <= input$glucose[2],
+           bmi >= input$bmi[1], bmi <= input$bmi[2])
+
+  modelo <- lm(as.formula(paste(input$var_y, "~", input$var_x)), data = datos)
+  resumen <- summary(modelo)
+  coef_df <- data.frame(Variable = rownames(resumen$coefficients),
+                        round(resumen$coefficients, 4))
+  names(coef_df) <- c("Variable", "Coeficiente", "Error Std", "t", "p-valor")
+  coef_df
+})
+```
+
+### Medidas Complementarias del Modelo
+```{r}
+renderTable({
+  datos <- df %>%
+    filter((gender == input$gender | input$gender == "Todos"),
+           (stroke == input$stroke | input$stroke == "Todos"),
+           (work_type == input$work | input$work == "Todos"),
+           (smoking_status == input$smoke | input$smoke == "Todos"),
+           age >= input$age[1], age <= input$age[2],
+           avg_glucose_level >= input$glucose[1], avg_glucose_level <= input$glucose[2],
+           bmi >= input$bmi[1], bmi <= input$bmi[2])
+
+  x <- datos[[input$var_x]]
+  y <- datos[[input$var_y]]
+  modelo <- lm(y ~ x)
+  resumen <- summary(modelo)
+
+  data.frame(
+    Métrica = c("Coef. Correlación (Pearson)", "R-cuadrado (R²)", "R-cuadrado ajustado", "Error Residual Estimado"),
+    Valor = round(c(
+      cor(x, y, use = "complete.obs"),
+      resumen$r.squared,
+      resumen$adj.r.squared,
+      resumen$sigma
+    ), 4)
+  )
+})
+```
+
+Row
+-------------------------------------
+
+### Histogramas con Curvas de Densidad
+```{r}
+renderPlot({
+  datos <- df %>%
+    filter((gender == input$gender | input$gender == "Todos"),
+           (stroke == input$stroke | input$stroke == "Todos"),
+           (work_type == input$work | input$work == "Todos"),
+           (smoking_status == input$smoke | input$smoke == "Todos"),
+           age >= input$age[1], age <= input$age[2],
+           avg_glucose_level >= input$glucose[1], avg_glucose_level <= input$glucose[2],
+           bmi >= input$bmi[1], bmi <= input$bmi[2])
+
+  library(ggplot2)
+  library(gridExtra)
+
+  p1 <- ggplot(datos, aes_string(x = input$var_x)) +
+    geom_histogram(aes(y = ..density..), fill = "skyblue", bins = 30, color = "white", alpha = 0.7) +
+    geom_density(color = "blue", size = 1) +
+    theme_minimal() +
+    labs(title = paste("Histograma + Densidad de", input$var_x), x = input$var_x, y = "Densidad")
+
+  p2 <- ggplot(datos, aes_string(x = input$var_y)) +
+    geom_histogram(aes(y = ..density..), fill = "orange", bins = 30, color = "white", alpha = 0.7) +
+    geom_density(color = "darkred", size = 1) +
+    theme_minimal() +
+    labs(title = paste("Histograma + Densidad de", input$var_y), x = input$var_y, y = "Densidad")
+
+  gridExtra::grid.arrange(p1, p2, ncol = 2)
+})
+```
+
+Análisis de Variables Cualitativas
+====================================
+
+Column {.sidebar}
+-------------------------------------
+
+### Seleccione la Variable Cualitativa:
+```{r}
+selectInput("var_cual", "Variable Cualitativa:", choices = names(df)[sapply(df, is.factor)], selected = "stroke")
+```
+
+Column
+-------------------------------------
+
+### Frecuencia Absoluta
+```{r}
+renderTable({
+  req(input$var_cual)
+  tabla <- table(df[[input$var_cual]])
+  data.frame(Categoría = names(tabla), Frecuencia = as.vector(tabla))
+})
+```
+
+### Frecuencia Relativa (%)
+```{r}
+renderTable({
+  req(input$var_cual)
+  tabla <- prop.table(table(df[[input$var_cual]])) * 100
+  data.frame(Categoría = names(tabla), Porcentaje = round(as.vector(tabla), 2))
+})
+```
+
+### Tablas Cruzadas
+```{r}
+selectInput("var_cruz", "Cruzar con:", choices = names(df)[sapply(df, is.factor)], selected = "gender")
+renderTable({
+  req(input$var_cual, input$var_cruz)
+  table(df[[input$var_cual]], df[[input$var_cruz]])
+})
+```
+
+Row {data-height=500}
+-------------------------------------
+
+### Gráfico de Frecuencia Absoluta
+```{r}
+renderPlot({
+  req(input$var_cual)
+  conteo <- as.data.frame(table(df[[input$var_cual]]))
+  names(conteo) <- c("Categoria", "Frecuencia")
+  conteo$Porcentaje <- round(conteo$Frecuencia / sum(conteo$Frecuencia) * 100, 1)
+  conteo$Etiqueta <- paste0(conteo$Frecuencia, " (", conteo$Porcentaje, "%)")
+
+  ggplot(conteo, aes(x = Categoria, y = Frecuencia)) +
+    geom_bar(stat = "identity", fill = "#0073C2FF") +
+    geom_text(aes(label = Etiqueta), vjust = -0.3, size = 4.5) +
+    labs(title = paste("Frecuencia de", input$var_cual), x = "", y = "Frecuencia") +
+    theme_minimal()
+})
+```
+
+### Gráfico de Frecuencia Relativa
+```{r}
+renderPlot({
+  req(input$var_cual)
+  tabla <- prop.table(table(df[[input$var_cual]])) * 100
+  df_pie <- data.frame(Categoria = names(tabla), Porcentaje = round(as.vector(tabla), 1))
+  df_pie$Etiqueta <- paste0(df_pie$Categoria, ": ", df_pie$Porcentaje, "%")
+
+  ggplot(df_pie, aes(x = "", y = Porcentaje, fill = Categoria)) +
+    geom_bar(stat = "identity", width = 1, color = "white") +
+    coord_polar("y") +
+    geom_text(aes(label = Etiqueta), position = position_stack(vjust = 0.5), size = 4) +
+    theme_void() +
+    labs(title = paste("Frecuencia Relativa de", input$var_cual)) +
+    scale_fill_brewer(palette = "Pastel1")
+})
+```
+
+### Gráfico de Tabla Cruzada
+```{r}
+renderPlot({
+  req(input$var_cual, input$var_cruz)
+  df_cross <- df %>% filter(!is.na(df[[input$var_cual]]), !is.na(df[[input$var_cruz]]))
+
+  ggplot(df_cross, aes_string(x = input$var_cual, fill = input$var_cruz)) +
+    geom_bar(position = "fill", color = "white") +
+    geom_text(stat = "count", aes(label = scales::percent(..count../tapply(..count.., ..x.., sum)[..x..])), 
+              position = position_fill(vjust = 0.5), size = 3.5, color = "black") +
+    scale_y_continuous(labels = scales::percent) +
+    labs(title = paste("Distribución de", input$var_cruz, "por", input$var_cual),
+         x = input$var_cual, y = "Proporción") +
+    scale_fill_brewer(palette = "Set2") +
+    theme_minimal()
+})
+```
